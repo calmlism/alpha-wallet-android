@@ -198,7 +198,7 @@ public class TransactionContract implements Parcelable {
     {
         String supplimentalTxt;
         //is this sending or receiving value?
-        if (tx.value.equals("0") || (!TextUtils.isEmpty(tx.value) && (new BigDecimal(tx.value).compareTo(BigDecimal.ZERO) == 0)))
+        if (tx.value.equals("0") || tx.value.equals("0x0") || (!TextUtils.isEmpty(tx.value) && (new BigDecimal(tx.value).compareTo(BigDecimal.ZERO) == 0)))
         {
             supplimentalTxt = "";
         }

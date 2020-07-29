@@ -43,6 +43,7 @@ public class TransactionHolder extends BinderViewHolder<TransactionMeta> impleme
     private final TextView value;
     private final TextView chainName;
     private final ImageView typeIcon;
+    private final ImageView txRejected;
     private final TextView supplemental;
     private final TokensService tokensService;
     private final ProgressBar pendingSpinner;
@@ -62,6 +63,7 @@ public class TransactionHolder extends BinderViewHolder<TransactionMeta> impleme
             date = null;
         }
         typeIcon = findViewById(R.id.type_icon);
+        txRejected = findViewById(R.id.icon_tx_rejected);
         address = findViewById(R.id.address);
         type = findViewById(R.id.type);
         value = findViewById(R.id.value);
@@ -88,7 +90,7 @@ public class TransactionHolder extends BinderViewHolder<TransactionMeta> impleme
         }
 
         value.setVisibility(View.VISIBLE);
-        if (pendingSpinner != null) pendingSpinner.setVisibility(View.GONE);
+        pendingSpinner.setVisibility(View.GONE);
         typeIcon.setVisibility(View.VISIBLE);
 
         setChainElement();
@@ -127,8 +129,16 @@ public class TransactionHolder extends BinderViewHolder<TransactionMeta> impleme
         }
 
         //Handle displaying the transaction item as pending or completed
-        if (transaction.blockNumber != null && transaction.blockNumber.equals("0"))
+        if (transaction.blockNumber.equals("-1"))
         {
+            setFailed();
+            txRejected.setVisibility(View.VISIBLE);
+            pendingSpinner.setVisibility(View.GONE);
+            address.setText(R.string.tx_rejected);
+        }
+        else if (transaction.blockNumber.equals("0"))
+        {
+            txRejected.setVisibility(View.GONE);
             type.setText(R.string.pending_transaction);
             transactionBackground.setBackgroundResource(R.drawable.background_pending_transaction);
             pendingSpinner.setVisibility(View.VISIBLE);
@@ -136,7 +146,8 @@ public class TransactionHolder extends BinderViewHolder<TransactionMeta> impleme
         }
         else if (transactionBackground != null)
         {
-            if (pendingSpinner != null) pendingSpinner.setVisibility(View.GONE);
+            txRejected.setVisibility(View.GONE);
+            pendingSpinner.setVisibility(View.GONE);
             transactionBackground.setBackgroundResource(R.color.white);
         }
     }
@@ -227,7 +238,6 @@ public class TransactionHolder extends BinderViewHolder<TransactionMeta> impleme
         typeIcon.setImageResource(R.drawable.ic_error);
         typeIcon.setColorFilter(ContextCompat.getColor(getContext(), R.color.red),
                                 PorterDuff.Mode.SRC_ATOP);
-        value.setText("");
     }
 
     public void setOnTransactionClickListener(OnTransactionClickListener onTransactionClickListener) {
