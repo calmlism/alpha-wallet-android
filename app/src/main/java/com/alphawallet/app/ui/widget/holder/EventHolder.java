@@ -26,9 +26,11 @@ import com.alphawallet.app.service.AssetDefinitionService;
 import com.alphawallet.app.service.TokensService;
 import com.alphawallet.app.ui.widget.OnEventClickListener;
 import com.alphawallet.app.ui.widget.entity.IconItem;
+import com.alphawallet.app.ui.widget.entity.StatusType;
 import com.alphawallet.app.util.BalanceUtils;
 import com.alphawallet.app.util.LocaleUtils;
 import com.alphawallet.app.util.Utils;
+import com.alphawallet.app.widget.TokenIcon;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.DataSource;
 import com.bumptech.glide.load.engine.GlideException;
@@ -56,13 +58,11 @@ public class EventHolder extends BinderViewHolder<EventMeta> implements View.OnC
 {
     public static final int VIEW_TYPE = 2016;
 
-    private final ImageView typeIcon;
-    private final TextView textIcon;
+    private final TokenIcon icon;
     private final TextView title;
     private final TextView value;
     private final TextView detail;
     private final TextView timeStamp;
-    private final CustomViewTarget viewTarget;
     private final AssetDefinitionService assetDefinition;
     private Token token;
 
@@ -76,8 +76,7 @@ public class EventHolder extends BinderViewHolder<EventMeta> implements View.OnC
                        AssetDefinitionService svs, OnEventClickListener eventClickListener)
     {
         super(resId, parent);
-        typeIcon = findViewById(R.id.token_icon);
-        textIcon = findViewById(R.id.text_icon);
+        icon = findViewById(R.id.token_icon);
         title = findViewById(R.id.title);
         value = findViewById(R.id.value);
         detail = findViewById(R.id.detail);
@@ -88,25 +87,6 @@ public class EventHolder extends BinderViewHolder<EventMeta> implements View.OnC
         onEventClickListener = eventClickListener;
         fetchTransactionsInteract = interact;
         tokensService = service;
-
-        viewTarget = new CustomViewTarget<ImageView, BitmapDrawable>(typeIcon) {
-            @Override
-            protected void onResourceCleared(@Nullable Drawable placeholder) { }
-
-            @Override
-            public void onLoadFailed(@Nullable Drawable errorDrawable)
-            {
-                setupTextIcon();
-            }
-
-            @Override
-            public void onResourceReady(@NotNull BitmapDrawable bitmap, Transition<? super BitmapDrawable> transition)
-            {
-                textIcon.setVisibility(View.GONE);
-                typeIcon.setVisibility(View.VISIBLE);
-                typeIcon.setImageDrawable(bitmap);
-            }
-        };
     }
 
     @Override
@@ -120,7 +100,7 @@ public class EventHolder extends BinderViewHolder<EventMeta> implements View.OnC
         Transaction tx = fetchTransactionsInteract.fetchCached(walletAddress, data.hash);
         token = tokensService.getToken(eventData.getChainId(), eventData.getTokenAddress());
         String sym = token != null ? token.getSymbol() : getContext().getString(R.string.eth);
-        if (token != null) displayTokenIcon();
+        icon.bindData(token, assetDefinition);
 
         Map<String, EventResult> resultMap = getEventResultMap(eventData.getResult());
         String transactionValue = getEventAmount(eventData, resultMap, tx);
@@ -174,8 +154,10 @@ public class EventHolder extends BinderViewHolder<EventMeta> implements View.OnC
         switch (eventData.getFunctionId())
         {
             case "sent":
+                icon.setStatusIcon(StatusType.SENT);
                 return getString(R.string.sent_to, resultMap.get("to").value);
             case "received":
+                icon.setStatusIcon(StatusType.RECEIVE);
                 return getString(R.string.from, resultMap.get("from").value);
             case "ownerApproved":
                 return getString(R.string.approval_granted_to, resultMap.get("spender").value);
@@ -267,76 +249,10 @@ public class EventHolder extends BinderViewHolder<EventMeta> implements View.OnC
         }
     }
 
-    private Token getOperationToken(Transaction tx, String walletAddress)
-    {
-        String operationAddress = tx.getOperationTokenAddress();
-        Token operationToken = tokensService.getToken(tx.chainId, operationAddress);
-
-        if (operationToken == null)
-        {
-            operationToken = tokensService.getToken(tx.chainId, walletAddress);
-        }
-
-        return operationToken;
-    }
-
-    private void setupTextIcon() {
-        typeIcon.setVisibility(View.GONE);
-        textIcon.setVisibility(View.VISIBLE);
-        textIcon.setBackgroundTintList(ContextCompat.getColorStateList(getContext(), Utils.getChainColour(token.tokenInfo.chainId)));
-        textIcon.setText(Utils.getIconisedText(token.getFullName()));
-    }
-
     private String localiseUnixTime(long timeStampInSec)
     {
         Date date = new java.util.Date(timeStampInSec* DateUtils.SECOND_IN_MILLIS);
         DateFormat timeFormat = java.text.DateFormat.getTimeInstance(DateFormat.SHORT, LocaleUtils.getDeviceLocale(getContext()));
         return timeFormat.format(date);
     }
-
-    private void displayTokenIcon()
-    {
-        int chainIcon = EthereumNetworkRepository.getChainLogo(token.tokenInfo.chainId);
-
-        // This appears more complex than necessary;
-        // This is because we are dealing with: new token holder view, refreshing views and recycled views
-        // If the token is a basechain token, immediately show the chain icon - no need to load
-        // Otherwise, try to load the icon resource. If there's no icon resource then generate a text token Icon (round circle with first four chars from the name)
-        // Only reveal the icon immediately before populating it - this stops the update flicker.
-        if (token.isEthereum())
-        {
-            textIcon.setVisibility(View.GONE);
-            typeIcon.setImageResource(chainIcon);
-            typeIcon.setVisibility(View.VISIBLE);
-        }
-        else
-        {
-            setupTextIcon();
-            IconItem iconItem = assetDefinition.fetchIconForToken(token);
-
-            Glide.with(getContext().getApplicationContext())
-                    .load(iconItem.getUrl())
-                    .signature(iconItem.getSignature())
-                    .onlyRetrieveFromCache(iconItem.onlyFetchFromCache()) //reduce URL checking, only check once per session
-                    .apply(new RequestOptions().circleCrop())
-                    .apply(new RequestOptions().placeholder(chainIcon))
-                    .listener(requestListener)
-                    .into(viewTarget);
-        }
-    }
-
-    /**
-     * Prevent glide dumping log errors - it is expected that load will fail
-     */
-    private RequestListener<Drawable> requestListener = new RequestListener<Drawable>() {
-        @Override
-        public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
-            return false;
-        }
-
-        @Override
-        public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
-            return false;
-        }
-    };
 }

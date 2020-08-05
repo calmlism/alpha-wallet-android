@@ -125,7 +125,7 @@ public class ActivityAdapter extends RecyclerView.Adapter<BinderViewHolder> {
         switch (viewType) {
             case TransactionHolder.VIEW_TYPE:
                 TransactionHolder transactionHolder
-                        = new TransactionHolder(getTxLayoutId(), parent, tokensService, fetchTransactionsInteract);
+                        = new TransactionHolder(getTxLayoutId(), parent, tokensService, fetchTransactionsInteract, assetService);
                 transactionHolder.setOnTransactionClickListener(onTransactionClickListener);
                 holder = transactionHolder;
                 break;

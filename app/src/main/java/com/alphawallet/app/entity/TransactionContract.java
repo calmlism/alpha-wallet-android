@@ -7,6 +7,7 @@ import android.text.TextUtils;
 
 import com.alphawallet.app.C;
 import com.alphawallet.app.entity.tokens.Token;
+import com.alphawallet.app.ui.widget.entity.StatusType;
 import com.alphawallet.app.ui.widget.holder.TransactionHolder;
 import com.alphawallet.app.util.BalanceUtils;
 
@@ -189,7 +190,7 @@ public class TransactionContract implements Parcelable {
         }
     }
 
-    public int getOperationImage(Token token, Transaction tx)
+    public StatusType getOperationImage(Token token, Transaction tx)
     {
         return token.ethereumTxImage(tx);
     }
